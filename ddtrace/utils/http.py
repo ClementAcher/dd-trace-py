@@ -1,3 +1,6 @@
+from ..compat import parse
+
+
 def normalize_header_name(header_name):
     """
     Normalizes an header name to lower case, stripping all its leading and trailing white spaces.
@@ -7,3 +10,23 @@ def normalize_header_name(header_name):
     :rtype: str
     """
     return header_name.strip().lower() if header_name is not None else None
+
+
+def sanitize_url_for_tag(url):
+    """
+    Strips the qs from a URL for use as tag in spans.
+    :param url: The url to be stripped
+    :return: The sanitized URL
+    """
+    # type: (str) -> str
+    parsed = parse.urlparse(url)
+    return parse.urlunparse(
+        (
+            parsed.scheme,
+            parsed.netloc,
+            parsed.path,
+            parsed.params,
+            None,  # drop parsed.query
+            parsed.fragment,
+        )
+    )

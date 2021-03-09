@@ -108,7 +108,7 @@ def on_prepare(request, response):
     if trace_query_string:
         request_span.set_tag(http.QUERY_STRING, request.query_string)
 
-    url = request.url.with_query(None)
+    url = str(request.url.with_query(None))
     trace_utils.set_http_meta(
         request_span,
         config.aiohttp,
