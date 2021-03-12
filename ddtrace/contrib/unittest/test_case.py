@@ -3,8 +3,7 @@ from six import PY2
 import unittest
 from ddtrace.vendor.wrapt import ObjectProxy
 
-from ..pytest.constants import FRAMEWORK, KIND
-from ...ext import SpanTypes
+from ..unittest.constants import FRAMEWORK, KIND
 from ...pin import Pin
 from ddtrace import config
 from ...ext import SpanTypes
@@ -41,21 +40,35 @@ class TestResultProxy(ObjectProxy):
         return self.__wrapped__.addSkip(test, reason)
 
     def addExpectedFailure(self, test, err):
-        etype, value, tb = err
         return self.__wrapped__.addExpectedFailure(test, err)
 
     def addUnexpectedSuccess(self, test):
         return self.__wrapped__.addUnexpectedSuccess(test)
 
-
 def _run_test(wrapped, instance, result):
     if PY2:
-        name = instance.__class__.__name__
+        test_class = instance.__class__.__name__
     else:
-        name = instance.__class__.__qualname__
+        test_class = instance.__class__.__qualname__
 
-    test_suite = "%s.%s" % (instance.__class__.__module__, name)
     test_name = instance._testMethodName
+    test_suite = "%s.%s" % (instance.__class__.__module__, test_class)
+    try:
+        # special case for nose: when a test is executed outside of a class inheriting from unittest.TestCase
+        # nose wraps the function (or class) inside of nose.case.FunctionTestCase or nose.case.MethodTestCase resp.
+        # then we have to get the test name and suite from the test attribute
+        # see https://github.com/nose-devs/nose/blob/master/nose/case.py
+        import nose
+        if isinstance(instance, nose.case.FunctionTestCase):
+            test_name = instance.test.__name__
+            # using module name as test suite as there is no class name
+            test_suite = instance.test.__module__
+        if isinstance(instance, nose.case.MethodTestCase):
+            test_name = instance.test.__name__
+            test_suite = "%s.%s" % (instance.test.__module__, instance.method.__class__.__name__)
+    except ImportError:
+        pass
+    print(test_suite, test_name)
     fqn = "%s.%s" % (test_suite, test_name)
 
     pin = Pin.get_from(unittest.TestCase)
